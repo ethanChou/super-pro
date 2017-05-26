@@ -15,7 +15,7 @@ public class Protocol {
 	/**
 	 * 默认大端解析
 	 */
-	public static boolean IsBigEndian = true;
+	public static boolean IsBigEndian = false;
 	/**
 	 * 包头 assic # 35
 	 */
