@@ -50,9 +50,9 @@ public class UltraServer extends Thread {
 
 	public UltraServer(Selector sel) {
 		this.sel = sel;
-		int cpu = 4;//Runtime.getRuntime().availableProcessors();
+		int cpu = 4;// Runtime.getRuntime().availableProcessors();
 		for (int i = 0; i < cpu; ++i) {
-			IHandler rh = new ReaderHandler(this,new MessageSession());
+			IHandler rh = new ReaderHandler(this, new MessageSession());
 			IHandler wh = new WriterHandler(this);
 			this.readHandlers.add(rh);
 			this.writeHandlers.add(wh);
@@ -74,7 +74,7 @@ public class UltraServer extends Thread {
 	private void read(SelectionKey key) throws IOException {
 		System.out.println("Read !");
 		int worker = key.hashCode() % readHandlers.size();
-		readHandlers.get(worker).process(key,null);
+		readHandlers.get(worker).process(key, null);
 	}
 
 	private void write(SelectionKey key) throws IOException {
@@ -83,23 +83,23 @@ public class UltraServer extends Thread {
 		synchronized (pendingSent) {
 			if (pendingSent.containsKey(key.channel())) {
 				List<Message> queue = pendingSent.get(key.channel());
-				if (queue!=null) {
-					writeHandlers.get(worker).process(key,queue);
+				if (queue != null) {
+					writeHandlers.get(worker).process(key, queue);
 					pendingSent.remove(key.channel());
 				}
 			}
 		}
 		key.interestOps(SelectionKey.OP_READ);
 	}
-	
+
 	private Map<SocketChannel, List<Message>> pendingSent = new HashMap<SocketChannel, List<Message>>();
-	
-	public void send(SelectionKey key,Message msg)  {
+
+	public void send(SelectionKey key, Message msg) {
 		synchronized (pool) {
 			pool.add(pool.size(), key);
 			pool.notifyAll();
 			synchronized (pendingSent) {
-				SocketChannel socket=(SocketChannel)key.channel();
+				SocketChannel socket = (SocketChannel) key.channel();
 				List<Message> queue = pendingSent.get(socket);
 				if (queue == null) {
 					queue = new ArrayList<Message>();
@@ -110,12 +110,12 @@ public class UltraServer extends Thread {
 		}
 		this.sel.wakeup();
 	}
-	
+
 	public void run() {
 		while (true) {
 			try {
-				int cout=this.sel.select();
-				
+				int cout = this.sel.select();
+
 				synchronized (pool) {
 					while (!pool.isEmpty()) {
 						SelectionKey key = (SelectionKey) pool.remove(0);
@@ -133,39 +133,38 @@ public class UltraServer extends Thread {
 					}
 					pool.clear();
 				}
-				
+
 				if (cout > 0) {
 					Iterator<?> i = this.sel.selectedKeys().iterator();
 					while (i.hasNext()) {
 						SelectionKey key = (SelectionKey) i.next();
-						
 						i.remove();
-
-						if (!key.isValid()) {
-							continue;
-						}
-						if (key.isAcceptable()) {
-							accept(key);
-						}
-						if (key.isReadable()) {
-							read(key);
-						}
 						try {
+							if (!key.isValid()) {
+								continue;
+							}
+							if (key.isAcceptable()) {
+								accept(key);
+							}
+							if (key.isReadable()) {
+								read(key);
+							}
+
 							if (key.isWritable()) {
 								write(key);
 							}
 						} catch (Exception e) {
-							System.out.println("Error in isWritable");
+							System.out.println("Error in SelectionKey");
+							key.cancel();
 						}
-						
+
 					}
-				} 
+				}
 			} catch (Exception e) {
 				System.out.println("Error in poll loop");
-				//System.out.println(e.getMessage());
+				// System.out.println(e.getMessage());
 			}
 		}
 	}
 
-	
 }
